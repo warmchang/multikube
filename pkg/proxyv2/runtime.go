@@ -28,7 +28,6 @@ type CompiledRoutes struct {
 	Headers      []*RouteRuntime
 	SNIExact     map[string][]*RouteRuntime
 	JWT          []*RouteRuntime
-	Default      *RouteRuntime
 }
 
 type RouteRuntime struct {
@@ -133,9 +132,6 @@ func (rc *RuntimeConfig) Match(r *http.Request) (*RouteRuntime, bool) {
 	if route, ok := rc.Routes.matchSNI(r); ok {
 		return route, true
 	}
-	if rc.Routes.Default != nil {
-		return rc.Routes.Default, true
-	}
 	return nil, false
 }
 
@@ -187,7 +183,6 @@ func (cr *CompiledRoutes) matchJWT(r *http.Request) (*RouteRuntime, bool) {
 			continue
 		}
 		if value, ok := claims[route.JWT.Claim]; ok && strings.EqualFold(fmt.Sprintf("%v", value), route.JWT.Value) {
-			fmt.Println(route.JWT.Claim)
 			return route, true
 		}
 	}

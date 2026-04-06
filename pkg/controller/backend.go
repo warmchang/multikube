@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/trace"
@@ -26,14 +27,16 @@ import (
 )
 
 type Controller struct {
-	mu        sync.Mutex
-	logger    logger.Logger
-	clientset *client.ClientSet
-	tracer    trace.Tracer
-	exchange  *events.Exchange
-	compiler  *compile.Compiler
-	runtime   *proxyv2.RuntimeStore
-	cache     *compile.State
+	mu                sync.Mutex
+	logger            logger.Logger
+	clientset         *client.ClientSet
+	tracer            trace.Tracer
+	exchange          *events.Exchange
+	compiler          *compile.Compiler
+	runtime           *proxyv2.RuntimeStore
+	cache             *compile.State
+	heartBeatInterval time.Duration
+	heartBeatTimeout  time.Duration
 }
 
 type ControllerCache = compile.State
@@ -61,6 +64,18 @@ func WithLogger(l logger.Logger) NewOption {
 func WithExchange(e *events.Exchange) NewOption {
 	return func(c *Controller) {
 		c.exchange = e
+	}
+}
+
+func WithHeartBeatInterval(every time.Duration) NewOption {
+	return func(c *Controller) {
+		c.heartBeatInterval = every
+	}
+}
+
+func WithHeartBeatTimeout(timeout time.Duration) NewOption {
+	return func(c *Controller) {
+		c.heartBeatTimeout = timeout
 	}
 }
 
@@ -297,6 +312,9 @@ func (c *Controller) Run(ctx context.Context) {
 		return
 	}
 
+	// Start heartbeats
+	go c.runHeartbeat(ctx)
+
 	// Subscribe to events via the exchange
 	c.exchange.On(events.BackendCreate, events.HandleErrors(c.logger, events.HandleBackends(c.onBackendCreate)))
 	// c.exchange.On(events.BackendDelete, events.HandleErrors(c.logger, events.HandleBackends(c.onDelete)))
@@ -321,9 +339,11 @@ func (c *Controller) Run(ctx context.Context) {
 
 func New(cs *client.ClientSet, opts ...NewOption) *Controller {
 	m := &Controller{
-		clientset: cs,
-		logger:    logger.ConsoleLogger{},
-		tracer:    otel.Tracer("controller"),
+		clientset:         cs,
+		logger:            logger.ConsoleLogger{},
+		tracer:            otel.Tracer("controller"),
+		heartBeatInterval: 15 * time.Second,
+		heartBeatTimeout:  10 * time.Second,
 		cache: &compile.State{
 			Backends:               map[string]*backendv1.Backend{},
 			Routes:                 map[string]*routev1.Route{},

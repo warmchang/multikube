@@ -27,8 +27,8 @@ This guide walks you through running a single-instance containerized Multikube c
      --name multikube \
      -p 5743:5743 \
      -p 8443:8443 \
-     -v multikube-data:/.local/state/multiUserCacheDirkube  \
-     multikube:latest
+     -v multikube-data:/.local/state/multikube  \
+     ghcr.io/amimof/multikube:latest
    ```
 
 ## Downloading and Installing the CLI
@@ -97,5 +97,4 @@ Multikubectl reads it's configuration from a yaml file located at `~/.multikube/
 
 ## Next Steps
 
-- For a more detailed installation guide see the [Installation Guide](/docs/installation/README.md).
-- To learn more read the [Documentation](/docs/README.md)
+Read the [User Guide](/docs/user-guide.md) to learn how to use Multikube in a real world scenario. To learn more read the [Documentation](/docs/README.md)

@@ -1,11 +1,10 @@
 package main
 
 import (
-	"github.com/amimof/multikube/pkg/client"
 	"github.com/spf13/cobra"
 )
 
-func newGetCmd(cfg *client.Config) *cobra.Command {
+func newGetCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "get",
 		Short: "Get resources",
@@ -25,12 +24,12 @@ multikube get routes
 
 	cmd.PersistentFlags().StringVarP(&outputFormat, "output", "o", "json", "Output format")
 
-	cmd.AddCommand(newGetBackendCmd(cfg))
-	cmd.AddCommand(newGetRouteCmd(cfg))
-	cmd.AddCommand(newGetCertificateCmd(cfg))
-	cmd.AddCommand(newGetCACmd(cfg))
-	cmd.AddCommand(newGetCredentialCmd(cfg))
-	cmd.AddCommand(newGetPolicyCmd(cfg))
+	cmd.AddCommand(newGetBackendCmd())
+	cmd.AddCommand(newGetRouteCmd())
+	cmd.AddCommand(newGetCertificateCmd())
+	cmd.AddCommand(newGetCACmd())
+	cmd.AddCommand(newGetCredentialCmd())
+	cmd.AddCommand(newGetPolicyCmd())
 
 	return cmd
 }

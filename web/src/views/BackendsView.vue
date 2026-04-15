@@ -41,8 +41,15 @@ function createEmptyBackend(): V1Backend {
       caRef: '',
       authRef: '',
       insecureSkipTlsVerify: false,
-      cacheTtl: '',
+      cacheTtl: '30s',
       type: V1LoadBalancingType.LoadBalancingTypeRoundRobin,
+      impersonationConfig: {
+        name: 'default',
+        enabled: true,
+        usernameClaim: 'sub',
+        groupsClaim: 'groups',
+        extraClaims: [],
+      },
     },
   }
 }
@@ -67,7 +74,8 @@ const lbTypeLabels: Record<string, string> = {
 const isFormValid = computed(() => {
   const name = (form.value.meta?.name ?? '').trim()
   const servers = form.value.config?.servers ?? []
-  return name.length > 0 && servers.length > 0
+  const cacheTtl = (form.value.config?.cacheTtl ?? '').trim()
+  return name.length > 0 && servers.length > 0 && cacheTtl.length > 0
 })
 
 // Servers as a newline-separated string for textarea editing
@@ -86,6 +94,16 @@ const formLabels = computed({
   set: (val: Record<string, string>) => {
     if (form.value.meta) {
       form.value.meta.labels = val
+    }
+  },
+})
+
+// Extra claims as a newline-separated string for textarea editing
+const extraClaimsText = computed({
+  get: () => (form.value.config?.impersonationConfig?.extraClaims ?? []).join('\n'),
+  set: (val: string) => {
+    if (form.value.config?.impersonationConfig) {
+      form.value.config.impersonationConfig.extraClaims = val.split('\n').filter((s) => s.trim() !== '')
     }
   },
 })
@@ -406,13 +424,48 @@ onMounted(() => {
           </el-select>
         </el-form-item>
 
-        <el-form-item label="Cache TTL">
+        <el-form-item label="Cache TTL" required>
           <el-input v-model="form.config!.cacheTtl" placeholder="e.g. 30s, 5m" />
         </el-form-item>
 
         <el-form-item label="Skip TLS Verify">
           <el-switch v-model="form.config!.insecureSkipTlsVerify" />
         </el-form-item>
+
+        <!-- Advanced section -->
+        <el-collapse style="margin-top: 12px">
+          <el-collapse-item title="Advanced" name="advanced">
+            <el-form-item label="Enable Impersonation" style="margin-top: 12px">
+              <el-switch v-model="form.config!.impersonationConfig!.enabled" />
+            </el-form-item>
+
+            <el-form-item label="Username Claim">
+              <el-input
+                v-model="form.config!.impersonationConfig!.usernameClaim"
+                placeholder="sub"
+                :disabled="!form.config!.impersonationConfig!.enabled"
+              />
+            </el-form-item>
+
+            <el-form-item label="Groups Claim">
+              <el-input
+                v-model="form.config!.impersonationConfig!.groupsClaim"
+                placeholder="groups"
+                :disabled="!form.config!.impersonationConfig!.enabled"
+              />
+            </el-form-item>
+
+            <el-form-item label="Extra Claims">
+              <el-input
+                v-model="extraClaimsText"
+                type="textarea"
+                :rows="3"
+                placeholder="One claim per line"
+                :disabled="!form.config!.impersonationConfig!.enabled"
+              />
+            </el-form-item>
+          </el-collapse-item>
+        </el-collapse>
       </el-form>
 
       <template #footer>

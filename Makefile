@@ -84,11 +84,11 @@ $(TBIN)/go-licenses: PACKAGE=github.com/google/go-licenses/v2@v2.0.1
 # Tests
 .PHONY: lint
 lint: | $(GOCILINT) ; $(info $(M) running golangci-lint) @ ## Runs static code analysis using golangci-lint
-	$Q $(GOCILINT) run --timeout=5m
+	$Q $(GOCILINT) run --build-tags=testui_stub --timeout=5m
 
 .PHONY: test
 test: ; $(info $(M) running go test) @ ## Runs unit tests
-	$Q $(GO) test -count=1 -v ./...
+	$Q $(GO) test  -tags=testui_stub -count=1 -v ./...
 
 .PHONY: e2e-setup
 e2e-setup: ; $(info $(M) setting up e2e environment) @ ## Creates kind clusters and builds local test assets
@@ -116,20 +116,20 @@ fmt: ; $(info $(M) running gofmt) @ ## Formats Go code
 
 .PHONY: vet
 vet: ; $(info $(M) running go vet) @ ## Examines Go source code and reports suspicious constructs, such as Printf calls whose arguments do not align with the format string
-	$Q $(GO) vet ./...
+	$Q $(GO) vet -tags=testui_stub ./...
 
 .PHONY: race
 race: ; $(info $(M) running go race) @ ## Runs tests with data race detection
-	$Q CGO_ENABLED=1 $(GO) test -race -short ./...
+	$Q CGO_ENABLED=1 $(GO) test -tags=testui_stub -race -short ./...
 
 .PHONY: benchmark
 benchmark: ; $(info $(M) running go benchmark test) @ ## Benchmark tests to examine performance
-	$Q $(GO) test -run=__absolutelynothing__ -bench=. $(PKGS)
+	$Q $(GO) test -tags=testui_stub -run=__absolutelynothing__ -bench=. $(PKGS)
 
 .PHONY: coverage
 coverage: ; $(info $(M) running go coverage) @ ## Runs tests and generates code coverage report at ./test/coverage.out
 	$Q mkdir -p $(CURDIR)/test/
-	$Q $(GO) test -coverprofile="$(CURDIR)/test/coverage.out" ./...
+	$Q $(GO) test -tags=testui_stub -coverprofile="$(CURDIR)/test/coverage.out" ./...
 	$Q $(GO) tool cover -html "$(CURDIR)/test/coverage.out" -o "$(CURDIR)/test/coverage.html"
 
 .PHONY: checkfmt

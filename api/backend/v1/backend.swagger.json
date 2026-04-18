@@ -593,6 +593,9 @@
         },
         "impersonationConfig": {
           "$ref": "#/definitions/v1ImpersonationConfig"
+        },
+        "enabled": {
+          "type": "boolean"
         }
       }
     },
@@ -604,6 +607,16 @@
           "additionalProperties": {
             "$ref": "#/definitions/v1TargetStatus"
           }
+        },
+        "phase": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "lastTransitionTime": {
+          "type": "string",
+          "format": "date-time"
         }
       }
     },

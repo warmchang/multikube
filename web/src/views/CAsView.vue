@@ -1,14 +1,13 @@
 <script setup lang="ts">
 import { onMounted, ref, computed, toRaw } from 'vue'
 import { useRouter } from 'vue-router'
-import { Plus, Refresh, Delete, Search, EditPen } from '@element-plus/icons-vue'
+import { Plus, Refresh, Delete, Search } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { useCaStore } from '@/stores/ca'
 import { useResourceTable } from '@/composables/useResourceTable'
 import { formatDate } from '@/utils/format'
 import type { V1CertificateAuthority } from '@/generated/ca'
 import LabelEditor from '@/components/LabelEditor.vue'
-import MetadataDisplay from '@/components/MetadataDisplay.vue'
 import ConfirmDelete from '@/components/ConfirmDelete.vue'
 
 const caStore = useCaStore()
@@ -17,7 +16,6 @@ const router = useRouter()
 const { nameFilter, displayItems } = useResourceTable(computed(() => caStore.items))
 
 const dialogVisible = ref(false)
-const isEditing = ref(false)
 const saving = ref(false)
 const deleteDialogVisible = ref(false)
 const deleteTarget = ref<V1CertificateAuthority | null>(null)
@@ -32,6 +30,7 @@ function createEmptyCa(): V1CertificateAuthority {
 		version: 'certificate_authority/v1',
 		meta: { name: '', labels: {} },
 		config: {
+			enabled: true,
 			certificateData: '',
 		},
 	}
@@ -100,14 +99,6 @@ async function handleBulkDelete() {
 
 function openCreate() {
 	form.value = createEmptyCa()
-	isEditing.value = false
-	dialogVisible.value = true
-}
-
-function openEdit(row: V1CertificateAuthority) {
-	form.value = structuredClone(toRaw(row))
-	if (!form.value.config) form.value.config = {}
-	isEditing.value = true
 	dialogVisible.value = true
 }
 
@@ -130,18 +121,25 @@ async function handleDelete() {
 async function handleSave() {
 	saving.value = true
 	try {
-		if (isEditing.value) {
-			await caStore.updateCa(form.value)
-			ElMessage.success('Certificate Authority updated')
-		} else {
-			await caStore.createCa(form.value)
-			ElMessage.success('Certificate Authority created')
-		}
+		await caStore.createCa(form.value)
+		ElMessage.success('Certificate Authority created')
 		dialogVisible.value = false
 	} catch (err) {
 		ElMessage.error(err instanceof Error ? err.message : 'Save failed')
 	} finally {
 		saving.value = false
+	}
+}
+
+async function handleToggleEnabled(row: V1CertificateAuthority, enabled: boolean) {
+	try {
+		const updated = structuredClone(toRaw(row))
+		if (!updated.config) updated.config = {}
+		updated.config.enabled = enabled
+		await caStore.updateCa(updated)
+		ElMessage.success(`${row.meta?.name} ${enabled ? 'enabled' : 'disabled'}`)
+	} catch (err) {
+		ElMessage.error(err instanceof Error ? err.message : 'Update failed')
 	}
 }
 
@@ -188,6 +186,12 @@ onMounted(() => {
 				row-key="meta.name" @row-click="handleRowClick" @selection-change="handleSelectionChange"
 				:row-class-name="() => 'clickable-row'">
 				<el-table-column type="selection" width="48" />
+				<el-table-column label="Enabled" width="90">
+					<template #default="{ row }">
+						<el-switch :model-value="row.config?.enabled ?? true" @update:model-value="handleToggleEnabled(row, $event)"
+							@click.stop />
+					</template>
+				</el-table-column>
 				<el-table-column prop="meta.name" label="Name" min-width="200" sortable />
 				<el-table-column label="Certificate Data" min-width="200" sortable :sort-method="sortByCertificate">
 					<template #default="{ row }">
@@ -203,27 +207,19 @@ onMounted(() => {
 						{{ formatDate(row.meta?.created) }}
 					</template>
 				</el-table-column>
-				<el-table-column label="Actions" width="120" fixed="right">
+				<el-table-column label="Actions" width="80" fixed="right">
 					<template #default="{ row }">
-						<el-button :icon="EditPen" type="primary" size="small" plain @click.stop="openEdit(row)" />
 						<el-button :icon="Delete" type="danger" size="small" plain @click.stop="confirmDelete(row)" />
 					</template>
 				</el-table-column>
 			</el-table>
 		</template>
 
-		<!-- Create / Edit Dialog -->
-		<el-dialog v-model="dialogVisible"
-			:title="isEditing ? 'Edit Certificate Authority' : 'Create Certificate Authority'" width="700" destroy-on-close>
+		<!-- Create Dialog -->
+		<el-dialog v-model="dialogVisible" title="Create Certificate Authority" width="700" destroy-on-close>
 			<el-form label-width="120px" label-position="right">
-				<el-collapse v-if="isEditing" style="margin-bottom: 20px">
-					<el-collapse-item title="Metadata" name="metadata">
-						<MetadataDisplay :meta="form.meta" />
-					</el-collapse-item>
-				</el-collapse>
-
 				<el-form-item label="Name" required>
-					<el-input v-model="form.meta!.name" :disabled="isEditing" placeholder="my-ca" />
+					<el-input v-model="form.meta!.name" placeholder="my-ca" />
 				</el-form-item>
 
 				<el-form-item label="Labels">
@@ -231,6 +227,10 @@ onMounted(() => {
 				</el-form-item>
 
 				<el-divider content-position="left">Config</el-divider>
+
+				<el-form-item label="Enabled">
+					<el-switch v-model="form.config!.enabled" />
+				</el-form-item>
 
 				<el-form-item label="Data" required>
 					<el-input v-model="form.config!.certificateData" type="textarea" :rows="8"
@@ -242,7 +242,7 @@ onMounted(() => {
 			<template #footer>
 				<el-button @click="dialogVisible = false">Cancel</el-button>
 				<el-button type="primary" :loading="saving" :disabled="!isFormValid" @click="handleSave">
-					{{ saving ? 'Saving...' : isEditing ? 'Update' : 'Create' }}
+					{{ saving ? 'Saving...' : 'Create' }}
 				</el-button>
 			</template>
 		</el-dialog>

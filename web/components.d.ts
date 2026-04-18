@@ -14,6 +14,7 @@ declare module 'vue' {
   export interface GlobalComponents {
     ApplyResourcesModal: typeof import('./src/components/ApplyResourcesModal.vue')['default']
     ConfirmDelete: typeof import('./src/components/ConfirmDelete.vue')['default']
+    EditYamlModal: typeof import('./src/components/EditYamlModal.vue')['default']
     ElAlert: typeof import('element-plus/es')['ElAlert']
     ElAside: typeof import('element-plus/es')['ElAside']
     ElButton: typeof import('element-plus/es')['ElButton']
@@ -33,7 +34,6 @@ declare module 'vue' {
     ElHeader: typeof import('element-plus/es')['ElHeader']
     ElIcon: typeof import('element-plus/es')['ElIcon']
     ElInput: typeof import('element-plus/es')['ElInput']
-    ElLink: typeof import('element-plus/es')['ElLink']
     ElMain: typeof import('element-plus/es')['ElMain']
     ElMenu: typeof import('element-plus/es')['ElMenu']
     ElMenuItem: typeof import('element-plus/es')['ElMenuItem']
@@ -65,6 +65,7 @@ declare module 'vue' {
 declare global {
   const ApplyResourcesModal: typeof import('./src/components/ApplyResourcesModal.vue')['default']
   const ConfirmDelete: typeof import('./src/components/ConfirmDelete.vue')['default']
+  const EditYamlModal: typeof import('./src/components/EditYamlModal.vue')['default']
   const ElAlert: typeof import('element-plus/es')['ElAlert']
   const ElAside: typeof import('element-plus/es')['ElAside']
   const ElButton: typeof import('element-plus/es')['ElButton']
@@ -84,7 +85,6 @@ declare global {
   const ElHeader: typeof import('element-plus/es')['ElHeader']
   const ElIcon: typeof import('element-plus/es')['ElIcon']
   const ElInput: typeof import('element-plus/es')['ElInput']
-  const ElLink: typeof import('element-plus/es')['ElLink']
   const ElMain: typeof import('element-plus/es')['ElMain']
   const ElMenu: typeof import('element-plus/es')['ElMenu']
   const ElMenuItem: typeof import('element-plus/es')['ElMenuItem']

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref, computed, watch, toRaw } from 'vue'
 import { useRouter } from 'vue-router'
-import { Plus, Refresh, Delete, Search, EditPen } from '@element-plus/icons-vue'
+import { Plus, Refresh, Delete, Search } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { useRouteStore } from '@/stores/route'
 import { useBackendStore } from '@/stores/backend'
@@ -9,7 +9,6 @@ import { useResourceTable } from '@/composables/useResourceTable'
 import { formatDate } from '@/utils/format'
 import type { V1Route, V1Match } from '@/generated/route'
 import LabelEditor from '@/components/LabelEditor.vue'
-import MetadataDisplay from '@/components/MetadataDisplay.vue'
 import ConfirmDelete from '@/components/ConfirmDelete.vue'
 
 type RouteMatchMode = '' | 'sni' | 'path' | 'pathPrefix' | 'header' | 'jwt'
@@ -21,7 +20,6 @@ const router = useRouter()
 const { nameFilter, displayItems } = useResourceTable(computed(() => routeStore.items))
 
 const dialogVisible = ref(false)
-const isEditing = ref(false)
 const saving = ref(false)
 const deleteDialogVisible = ref(false)
 const deleteTarget = ref<V1Route | null>(null)
@@ -37,6 +35,7 @@ function createEmptyRoute(): V1Route {
 		version: 'route/v1',
 		meta: { name: '', labels: {} },
 		config: {
+			enabled: true,
 			backendRef: '',
 			match: undefined,
 		},
@@ -179,28 +178,6 @@ async function handleBulkDelete() {
 function openCreate() {
 	form.value = createEmptyRoute()
 	matchMode.value = ''
-	isEditing.value = false
-	dialogVisible.value = true
-}
-
-function openEdit(row: V1Route) {
-	const raw = structuredClone(toRaw(row))
-	if (!raw.config) raw.config = {}
-	// Infer match mode BEFORE setting form to avoid watch overwriting match data
-	const inferred = inferMatchMode(raw.config.match)
-	form.value = raw
-	// Set matchMode without triggering the watcher to overwrite existing data.
-	// We temporarily remove the watch effect by setting the value after form is assigned.
-	// Since the watch triggers on matchMode change, and we need the existing match data
-	// preserved, we set matchMode only if it differs from current (which it always will
-	// on a fresh open). To avoid the watcher clearing the data, we set form first then mode.
-	// Actually the watcher WILL fire and overwrite. So we need a guard.
-	matchMode.value = inferred
-	// Restore the actual match data from the resource after watcher ran
-	if (raw.config.match) {
-		form.value.config!.match = structuredClone(raw.config.match)
-	}
-	isEditing.value = true
 	dialogVisible.value = true
 }
 
@@ -223,18 +200,25 @@ async function handleDelete() {
 async function handleSave() {
 	saving.value = true
 	try {
-		if (isEditing.value) {
-			await routeStore.updateRoute(form.value)
-			ElMessage.success('Route updated')
-		} else {
-			await routeStore.createRoute(form.value)
-			ElMessage.success('Route created')
-		}
+		await routeStore.createRoute(form.value)
+		ElMessage.success('Route created')
 		dialogVisible.value = false
 	} catch (err) {
 		ElMessage.error(err instanceof Error ? err.message : 'Save failed')
 	} finally {
 		saving.value = false
+	}
+}
+
+async function handleToggleEnabled(row: V1Route, enabled: boolean) {
+	try {
+		const updated = structuredClone(toRaw(row))
+		if (!updated.config) updated.config = {}
+		updated.config.enabled = enabled
+		await routeStore.updateRoute(updated)
+		ElMessage.success(`${row.meta?.name} ${enabled ? 'enabled' : 'disabled'}`)
+	} catch (err) {
+		ElMessage.error(err instanceof Error ? err.message : 'Update failed')
 	}
 }
 
@@ -293,6 +277,12 @@ onMounted(() => {
 				style="width: 100%" row-key="meta.name" @row-click="handleRowClick" @selection-change="handleSelectionChange"
 				:row-class-name="() => 'clickable-row'">
 				<el-table-column type="selection" width="48" />
+				<el-table-column label="Enabled" width="90">
+					<template #default="{ row }">
+						<el-switch :model-value="row.config?.enabled ?? true" @update:model-value="handleToggleEnabled(row, $event)"
+							@click.stop />
+					</template>
+				</el-table-column>
 				<el-table-column prop="meta.name" label="Name" min-width="150" sortable />
 				<el-table-column label="Status" width="100" sortable :sort-method="sortByStatus">
 					<template #default="{ row }">
@@ -319,26 +309,19 @@ onMounted(() => {
 						{{ formatDate(row.meta?.created) }}
 					</template>
 				</el-table-column>
-				<el-table-column label="Actions" width="120" fixed="right">
+				<el-table-column label="Actions" width="80" fixed="right">
 					<template #default="{ row }">
-						<el-button :icon="EditPen" type="primary" size="small" plain @click.stop="openEdit(row)" />
 						<el-button :icon="Delete" type="danger" size="small" plain @click.stop="confirmDelete(row)" />
 					</template>
 				</el-table-column>
 			</el-table>
 		</template>
 
-		<!-- Create / Edit Dialog -->
-		<el-dialog v-model="dialogVisible" :title="isEditing ? 'Edit Route' : 'Create Route'" width="600" destroy-on-close>
+		<!-- Create Dialog -->
+		<el-dialog v-model="dialogVisible" title="Create Route" width="600" destroy-on-close>
 			<el-form label-width="140px" label-position="right">
-				<el-collapse v-if="isEditing" style="margin-bottom: 20px">
-					<el-collapse-item title="Metadata" name="metadata">
-						<MetadataDisplay :meta="form.meta" />
-					</el-collapse-item>
-				</el-collapse>
-
 				<el-form-item label="Name" required>
-					<el-input v-model="form.meta!.name" :disabled="isEditing" placeholder="my-route" />
+					<el-input v-model="form.meta!.name" placeholder="my-route" />
 				</el-form-item>
 
 				<el-form-item label="Labels">
@@ -346,6 +329,10 @@ onMounted(() => {
 				</el-form-item>
 
 				<el-divider content-position="left">Config</el-divider>
+
+				<el-form-item label="Enabled">
+					<el-switch v-model="form.config!.enabled" />
+				</el-form-item>
 
 				<el-form-item label="Backend Ref" required>
 					<el-select v-model="form.config!.backendRef" placeholder="Select Backend" style="width: 100%" clearable
@@ -402,7 +389,7 @@ onMounted(() => {
 			<template #footer>
 				<el-button @click="dialogVisible = false">Cancel</el-button>
 				<el-button type="primary" :loading="saving" :disabled="!isFormValid" @click="handleSave">
-					{{ saving ? 'Saving...' : isEditing ? 'Update' : 'Create' }}
+					{{ saving ? 'Saving...' : 'Create' }}
 				</el-button>
 			</template>
 		</el-dialog>

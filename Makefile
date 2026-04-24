@@ -51,6 +51,10 @@ oci: ; $(info $(M) building container image) @ ## Build container image from Doc
 protos: ; $(info $(M) generating protos) @ ## Generate protos
 	buf generate
 
+.PHONY: run
+run: ; $(info $(M) run dev server) @ ## Run server locally with go run
+	 $Q $(GO) run -tags=testui_stub ./cmd/multikube --log-level debug
+
 MOCKGEN ?= mockgen
 .PHONY: mockgen
 mockgen: ; $(info $(M) generating mock clients) @ ## Generate Go mock clients for backend
@@ -70,6 +74,7 @@ generate-ts-clients: ; $(info $(M) generating TypeScript OpenAPI clients) @ ## G
 	$Q $(OPENAPI_GENERATOR) generate -i api/credential/v1/credential.swagger.json -g typescript-fetch -o web/src/generated/credential
 	$Q $(OPENAPI_GENERATOR) generate -i api/policy/v1/policy.swagger.json -g typescript-fetch -o web/src/generated/policy
 	$Q $(OPENAPI_GENERATOR) generate -i api/route/v1/route.swagger.json -g typescript-fetch -o web/src/generated/route
+	$Q rm -rf web/src/generated/metrics
 	$Q $(OPENAPI_GENERATOR) generate -i api/metrics/v1/metrics.swagger.json -g typescript-fetch -o web/src/generated/metrics
 
 # Tools
